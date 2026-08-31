@@ -115,3 +115,19 @@ h2 {
   background: #e3fcef;
   color: #006644;
 }
+
+.remove-btn {
+  margin-left: auto;
+  padding: 6px 10px;
+  border: 1px solid #ff5630;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #bf2600;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.remove-btn:hover {
+  background: #ffebe6;
+}

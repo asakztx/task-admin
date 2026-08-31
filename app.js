@@ -79,19 +79,61 @@
       badge.className = 'badge badge--' + task.priority;
       badge.textContent = task.priority;
 
+      var remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'remove-btn';
+      remove.textContent = 'Удалить';
+      remove.dataset.id = task.id;
+
       li.appendChild(name);
       li.appendChild(badge);
+      li.appendChild(remove);
       taskList.appendChild(li);
     });
   }
 
-  function showConfirmation(task) {
+  function showMessage(text) {
     confirmation.hidden = false;
-    confirmation.textContent = 'Задача «' + task.title + '» успешно создана.';
+    confirmation.textContent = text;
     window.setTimeout(function () {
       confirmation.hidden = true;
     }, 3000);
   }
+
+  function deleteTask(id) {
+    var tasks = getTasks();
+    var index = -1;
+    for (var i = 0; i < tasks.length; i++) {
+      if (tasks[i].id === id) {
+        index = i;
+        break;
+      }
+    }
+
+    if (index === -1) {
+      return false;
+    }
+
+    tasks.splice(index, 1);
+    saveTasks(tasks);
+    render();
+    return true;
+  }
+
+  taskList.addEventListener('click', function (event) {
+    var remove = event.target.closest ? event.target.closest('.remove-btn') : null;
+    if (!remove) {
+      return;
+    }
+
+    var id = remove.dataset.id;
+    var deleted = deleteTask(id);
+    if (deleted) {
+      showMessage('Задача удалена.');
+    } else {
+      showMessage('Задача не найдена.');
+    }
+  });
 
   userForm.addEventListener('submit', function (event) {
     event.preventDefault();
@@ -133,7 +175,7 @@
     prioritySelect.value = 'высокий';
 
     render();
-    showConfirmation(task);
+    showMessage('Задача «' + task.title + '» успешно создана.');
   });
 
   currentUser = getCurrentUser();
