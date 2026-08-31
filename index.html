@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Управление задачами</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app">
+    <h1>Управление задачами</h1>
+
+    <section class="panel">
+      <h2>Новая задача</h2>
+      <form id="task-form">
+        <label>
+          Название
+          <input type="text" id="task-title" placeholder="Введите название задачи" required>
+        </label>
+        <label>
+          Приоритет
+          <select id="task-priority">
+            <option value="высокий">высокий</option>
+            <option value="средний">средний</option>
+            <option value="низкий">низкий</option>
+          </select>
+        </label>
+        <button type="submit">Сохранить</button>
+      </form>
+      <p id="confirmation" class="confirmation" hidden></p>
+    </section>
+
+    <section class="panel">
+      <h2>Список задач</h2>
+      <ul id="task-list" class="task-list"></ul>
+      <p id="empty-message" class="empty" hidden>Список задач пуст</p>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
