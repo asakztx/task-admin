@@ -1,7 +1,8 @@
 (function () {
   'use strict';
 
-  var STORAGE_KEY = 'taskadmin.tasks';
+  var USER_KEY = 'taskadmin.currentUser';
+  var TASKS_PREFIX = 'taskadmin.tasks.';
 
   var form = document.getElementById('task-form');
   var titleInput = document.getElementById('task-title');
@@ -10,20 +11,41 @@
   var taskList = document.getElementById('task-list');
   var emptyMessage = document.getElementById('empty-message');
 
+  var userForm = document.getElementById('user-form');
+  var userNameInput = document.getElementById('user-name');
+  var currentUserLabel = document.getElementById('current-user-label');
+
   var validPriorities = ['высокий', 'средний', 'низкий'];
+
+  var currentUser;
+
+  function getCurrentUser() {
+    var stored = localStorage.getItem(USER_KEY);
+    return stored ? stored : 'Гость';
+  }
+
+  function setCurrentUser(name) {
+    currentUser = name.trim();
+    localStorage.setItem(USER_KEY, currentUser);
+  }
+
+  function storageKey() {
+    return TASKS_PREFIX + currentUser;
+  }
 
   function createTask(data) {
     return {
       id: data.id != null ? data.id : Date.now().toString(),
       title: data.title.trim(),
       priority: data.priority,
+      owner: currentUser,
       createdAt: data.createdAt != null ? data.createdAt : new Date().toISOString()
     };
   }
 
   function getTasks() {
     try {
-      var raw = localStorage.getItem(STORAGE_KEY);
+      var raw = localStorage.getItem(storageKey());
       var tasks = raw ? JSON.parse(raw) : [];
       return Array.isArray(tasks) ? tasks : [];
     } catch (e) {
@@ -32,10 +54,11 @@
   }
 
   function saveTasks(tasks) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    localStorage.setItem(storageKey(), JSON.stringify(tasks));
   }
 
   function render() {
+    currentUserLabel.textContent = currentUser;
     var tasks = getTasks();
     taskList.innerHTML = '';
 
@@ -70,6 +93,20 @@
     }, 3000);
   }
 
+  userForm.addEventListener('submit', function (event) {
+    event.preventDefault();
+
+    var name = userNameInput.value.trim();
+    if (!name) {
+      alert('Укажите имя пользователя.');
+      return;
+    }
+
+    setCurrentUser(name);
+    userNameInput.value = '';
+    render();
+  });
+
   form.addEventListener('submit', function (event) {
     event.preventDefault();
 
@@ -99,5 +136,6 @@
     showConfirmation(task);
   });
 
+  currentUser = getCurrentUser();
   render();
 })();

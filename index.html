@@ -11,6 +11,18 @@
     <h1>Управление задачами</h1>
 
     <section class="panel">
+      <h2>Пользователь</h2>
+      <form id="user-form">
+        <label>
+          Имя пользователя
+          <input type="text" id="user-name" placeholder="Введите ваше имя" required>
+        </label>
+        <button type="submit">Сменить пользователя</button>
+      </form>
+      <p class="user-info">Текущий пользователь: <strong id="current-user-label"></strong></p>
+    </section>
+
+    <section class="panel">
       <h2>Новая задача</h2>
       <form id="task-form">
         <label>
