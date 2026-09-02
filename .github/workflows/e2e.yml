@@ -1,0 +1,32 @@
+name: CI — e2e-тесты (Playwright)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Установить зависимости
+        run: npm ci
+
+      - name: Установить браузер Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Установить и запустить darkhttpd
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y darkhttpd
+          ./serve.sh start
+
+      - name: Запустить e2e-тесты
+        run: npm test

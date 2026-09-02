@@ -31,3 +31,24 @@
 - Лог: `/tmp/darkhttpd.log`, PID: `/tmp/darkhttpd.pid`.
 - Доступ с Windows-хоста — по проброшенному в контейнер порту, например `http://localhost:8080`.
 - Bootstrap подключается с CDN, поэтому клиенту нужен доступ в интернет для полной вёрстки.
+
+## E2E-тесты (Playwright)
+
+Функциональность покрыта e2e-тестами на базе **Playwright** (Chromium, headless). Тесты обращаются к работающему darkhttpd на `http://localhost:8080`.
+
+```sh
+./serve.sh start   # запустить darkhttpd (если не запущен)
+npm test           # выполнить e2e-тесты
+```
+
+- Конфигурация — `playwright.config.js` (`baseURL: http://localhost:8080`, `testDir: ./e2e`).
+- Сценарии — `e2e/tasks.spec.js`.
+- Каждый тест очищает `localStorage` перед запуском (изоляция состояния).
+- Зависимости — `package.json` (`@playwright/test`); `node_modules` и артефакты тестов исключены через `.gitignore`.
+
+## CI (GitHub Actions)
+
+- Workflow — `.github/workflows/e2e.yml`, job `e2e` на `ubuntu-latest`.
+- Запускается на push в `main` и на pull request.
+- Шаги: checkout → setup-node (cache npm) → `npm ci` → `npx playwright install --with-deps chromium` → установка/запуск `darkhttpd` (`./serve.sh start`) → `npm test`.
+- Node 20, браузер Chromium.
