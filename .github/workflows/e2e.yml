@@ -22,11 +22,11 @@ jobs:
       - name: Установить браузер Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Установить и запустить darkhttpd
+      - name: Запустить веб-сервер (http.server на 8080)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y darkhttpd
-          ./serve.sh start
+          nohup python3 -m http.server 8080 --bind 127.0.0.1 > /tmp/httpd.log 2>&1 &
+          sleep 1
+          curl -fsS http://127.0.0.1:8080/index.html > /dev/null && echo "сервер запущен"
 
       - name: Запустить e2e-тесты
         run: npm test
