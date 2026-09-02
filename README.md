@@ -1,0 +1,74 @@
+# Управление задачами (Task Admin)
+
+Простое клиентское веб-приложение для управления задачами: создание, просмотр списка, редактирование, отметка о выполнении и удаление. Реализовано на **vanilla JavaScript** с оформлением на **Bootstrap 5** (CDN), данные хранятся в `localStorage` браузера без серверной части.
+
+## Возможности
+
+- Создание задачи (название, приоритет, дата начала).
+- Просмотр списка всех задач текущего пользователя.
+- Редактирование существующих задач.
+- Отметка задачи как выполненной и возврат в работу.
+- Удаление задач (включая обработку несуществующих).
+- Изоляция задач по пользователю (каждый видит только свои).
+
+## Структура
+
+```
+app.js                  # логика приложения (vanilla JS)
+index.html              # разметка страницы
+styles.css              # дополнительные стили
+serve.sh                # запуск/остановка локального веб-сервера
+e2e/tasks.spec.js       # e2e-тесты (Playwright)
+playwright.config.js    # конфигурация Playwright
+specs/start/            # техническое задание и Gherkin-сценарии
+.github/workflows/e2e.yml  # CI: прогон e2e-тестов
+```
+
+## Настройка окружения
+
+Контейнер «голый» (Alpine Linux, без systemd/OpenRC), стек: Node.js 24, npm 11.
+
+### 1. Установка зависимостей
+
+```sh
+npm install            # установить dev-зависимости (@playwright/test)
+npx playwright install chromium   # установить браузер Chromium
+```
+
+### 2. Запуск локального веб-сервера
+
+Для тестов нужен работающий сервер на `http://localhost:8080`. Используется лёгкий сервер **darkhttpd** через скрипт `serve.sh`:
+
+```sh
+apk add darkhttpd      # установить darkhttpd (на Alpine)
+./serve.sh start       # запуск на http://0.0.0.0:8080/
+./serve.sh stop        # остановка
+./serve.sh status      # проверка состояния
+./serve.sh restart     # перезапуск
+```
+
+- Корень сервера — директория проекта (`index.html`).
+- Порт по умолчанию **8080**, адрес `0.0.0.0` (переопределяются `DARKHTTPD_PORT`/`DARKHTTPD_ADDR`).
+- Лог — `/tmp/darkhttpd.log`, PID — `/tmp/darkhttpd.pid`.
+- Доступ с Windows-хоста — по проброшенному в контейнер порту, например `http://localhost:8080`.
+
+Приложение также можно открыть напрямую через `index.html`. Для полной вёрстки Bootstrap грузится с CDN — нужен доступ в интернет.
+
+## Запуск e2e-тестов
+
+Сценарии покрыты e2e-тестами на базе **Playwright** (Chromium, headless):
+
+```sh
+./serve.sh start   # запустить сервер (если не запущен)
+npm test           # выполнить все 10 e2e-тестов
+```
+
+Конфигурация — `playwright.config.js` (`baseURL: http://localhost:8080`, `testDir: ./e2e`).
+
+## CI (GitHub Actions)
+
+Workflow `.github/workflows/e2e.yml` запускает e2e-тесты на `ubuntu-latest` при push в `main` и на pull request: checkout → `npm ci` → установка Chromium → запуск статического сервера → `npm test`.
+
+## Техническое задание
+
+Детальная спецификация и критерии приёмки — в `specs/start/spec.md`, Gherkin-сценарии — в `specs/start/taskadmin.feature`.
