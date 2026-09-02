@@ -30,6 +30,24 @@ test('создание задачи отображается в списке', a
   await expect(page.locator('#confirmation')).toContainText('успешно создана');
 });
 
+test('создание задачи с датой начала', async ({ page }) => {
+  await createTask(page, 'Планёрка', 'средний', '2023-09-01');
+  await expect(page.locator('#task-list .task-name')).toHaveText('Планёрка');
+  await expect(page.locator('#task-list .text-muted')).toHaveText('Старт: 2023-09-01');
+  await expect(page.locator('#confirmation')).toContainText('успешно создана');
+});
+
+test('просмотр списка задач', async ({ page }) => {
+  await createTask(page, 'Задача 1', 'высокий');
+  await createTask(page, 'Задача 2', 'средний');
+  await createTask(page, 'Задача 3', 'низкий');
+  await expect(page.locator('#task-list .task-name')).toHaveText([
+    'Задача 1',
+    'Задача 2',
+    'Задача 3',
+  ]);
+});
+
 test('пустой список задач', async ({ page }) => {
   await expect(page.locator('#empty-message')).toBeVisible();
   await expect(page.locator('#task-list .task-name')).toHaveCount(0);
@@ -69,6 +87,17 @@ test('удаление задачи', async ({ page }) => {
   await expect(page.locator('#task-list .task-name')).toHaveCount(0);
   await expect(page.locator('#empty-message')).toBeVisible();
   await expect(page.locator('#confirmation')).toContainText('удалена');
+});
+
+test('удаление несуществующей задачи', async ({ page }) => {
+  await createTask(page, 'Задача', 'высокий');
+  await page.evaluate(() => {
+    const btn = document.querySelector('button[data-action="remove"]');
+    btn.dataset.id = 'nonexistent-id';
+  });
+  await page.click('button[data-action="remove"]');
+  await expect(page.locator('#confirmation')).toContainText('Задача не найдена');
+  await expect(page.locator('#task-list .task-name')).toHaveCount(1);
 });
 
 test('изоляция задач по пользователю', async ({ page }) => {
