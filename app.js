@@ -43,9 +43,13 @@
     return TASKS_PREFIX + currentUser;
   }
 
+  function generateId() {
+    return Date.now().toString() + '-' + Math.random().toString(36).slice(2, 8);
+  }
+
   function createTask(data) {
     return {
-      id: data.id != null ? data.id : Date.now().toString(),
+      id: data.id != null ? data.id : generateId(),
       title: data.title.trim(),
       priority: data.priority,
       startDate: data.startDate != null ? data.startDate : '',
@@ -134,32 +138,18 @@
     });
   }
 
-  function showMessage(text) {
+  var messageTimer;
+
+  function showMessage(text, type) {
+    type = type || 'success';
+    confirmation.classList.remove('alert-success', 'alert-danger');
+    confirmation.classList.add(type === 'error' ? 'alert-danger' : 'alert-success');
     confirmation.hidden = false;
     confirmation.textContent = text;
-    window.setTimeout(function () {
+    window.clearTimeout(messageTimer);
+    messageTimer = window.setTimeout(function () {
       confirmation.hidden = true;
     }, 3000);
-  }
-
-  function deleteTask(id) {
-    var tasks = getTasks();
-    var index = -1;
-    for (var i = 0; i < tasks.length; i++) {
-      if (tasks[i].id === id) {
-        index = i;
-        break;
-      }
-    }
-
-    if (index === -1) {
-      return false;
-    }
-
-    tasks.splice(index, 1);
-    saveTasks(tasks);
-    render();
-    return true;
   }
 
   function findTaskIndex(tasks, id) {
@@ -171,13 +161,34 @@
     return -1;
   }
 
+  function deleteTask(id) {
+    var tasks = getTasks();
+    var index = findTaskIndex(tasks, id);
+    if (index === -1) {
+      return false;
+    }
+
+    tasks.splice(index, 1);
+    saveTasks(tasks);
+    render();
+    return true;
+  }
+
+  var EDITABLE_FIELDS = ['title', 'priority', 'startDate', 'done'];
+
   function updateTask(id, updates) {
     var tasks = getTasks();
     var index = findTaskIndex(tasks, id);
     if (index === -1) {
       return false;
     }
-    tasks[index] = createTask(Object.assign({}, tasks[index], updates));
+
+    var task = tasks[index];
+    EDITABLE_FIELDS.forEach(function (field) {
+      if (updates[field] !== undefined) {
+        task[field] = updates[field];
+      }
+    });
     saveTasks(tasks);
     render();
     return true;
@@ -213,7 +224,7 @@
 
     if (action === 'remove') {
       var deleted = deleteTask(id);
-      showMessage(deleted ? 'Задача удалена.' : 'Задача не найдена.');
+      showMessage(deleted ? 'Задача удалена.' : 'Задача не найдена.', deleted ? 'success' : 'error');
       return;
     }
 
@@ -221,7 +232,7 @@
       var tasks = getTasks();
       var index = findTaskIndex(tasks, id);
       if (index === -1) {
-        showMessage('Задача не найдена.');
+        showMessage('Задача не найдена.', 'error');
         return;
       }
       startEditing(tasks[index]);
@@ -232,7 +243,7 @@
       var current = getTasks();
       var idx = findTaskIndex(current, id);
       if (idx === -1) {
-        showMessage('Задача не найдена.');
+        showMessage('Задача не найдена.', 'error');
         return;
       }
       var isDone = !current[idx].done;
@@ -256,6 +267,7 @@
 
     setCurrentUser(name);
     userNameInput.value = '';
+    resetForm();
     render();
   });
 
