@@ -14,6 +14,13 @@
   var confirmation = document.getElementById('confirmation');
   var taskList = document.getElementById('task-list');
   var emptyMessage = document.getElementById('empty-message');
+  var noMatchMessage = document.getElementById('no-match-message');
+  var taskStats = document.getElementById('task-stats');
+  var searchInput = document.getElementById('task-search');
+  var filterSelect = document.getElementById('task-filter');
+  var sortSelect = document.getElementById('task-sort');
+  var exportButton = document.getElementById('task-export');
+  var importInput = document.getElementById('task-import');
 
   var userForm = document.getElementById('user-form');
   var userNameInput = document.getElementById('user-name');
@@ -73,18 +80,94 @@
     localStorage.setItem(storageKey(), JSON.stringify(tasks));
   }
 
+  function visibleTasks(tasks) {
+    var query = searchInput.value.trim().toLowerCase();
+    var status = filterSelect.value;
+
+    return tasks.filter(function (task) {
+      if (status === 'done' && !task.done) {
+        return false;
+      }
+      if (status === 'active' && task.done) {
+        return false;
+      }
+      if (query && task.title.toLowerCase().indexOf(query) === -1) {
+        return false;
+      }
+      return true;
+    });
+  }
+
+  function statsText(tasks) {
+    var done = 0;
+    tasks.forEach(function (task) {
+      if (task.done) {
+        done++;
+      }
+    });
+    return 'Всего: ' + tasks.length + ' • Выполнено: ' + done;
+  }
+
+  var priorityRank = {
+    'высокий': 0,
+    'средний': 1,
+    'низкий': 2
+  };
+
+  function sortTasks(tasks) {
+    var mode = sortSelect.value;
+    var sorted = tasks.slice();
+
+    sorted.sort(function (a, b) {
+      if (mode === 'priority') {
+        var ra = priorityRank[a.priority] != null ? priorityRank[a.priority] : 3;
+        var rb = priorityRank[b.priority] != null ? priorityRank[b.priority] : 3;
+        if (ra !== rb) {
+          return ra - rb;
+        }
+        return (a.title || '').localeCompare(b.title || '', 'ru');
+      }
+      if (mode === 'start') {
+        var sa = a.startDate || '';
+        var sb = b.startDate || '';
+        if (sa !== sb) {
+          if (sa === '') {
+            return 1;
+          }
+          if (sb === '') {
+            return -1;
+          }
+          return sa < sb ? -1 : 1;
+        }
+        return (a.title || '').localeCompare(b.title || '', 'ru');
+      }
+      return new Date(a.createdAt) - new Date(b.createdAt);
+    });
+
+    return sorted;
+  }
+
   function render() {
     currentUserLabel.textContent = currentUser;
     var tasks = getTasks();
+    var filtered = sortTasks(visibleTasks(tasks));
     taskList.innerHTML = '';
 
     if (tasks.length === 0) {
       emptyMessage.hidden = false;
-      return;
+      noMatchMessage.hidden = true;
+      taskStats.textContent = 'Задач пока нет';
+    } else if (filtered.length === 0) {
+      emptyMessage.hidden = true;
+      noMatchMessage.hidden = false;
+      taskStats.textContent = statsText(tasks);
+    } else {
+      emptyMessage.hidden = true;
+      noMatchMessage.hidden = true;
+      taskStats.textContent = statsText(tasks);
     }
 
-    emptyMessage.hidden = true;
-    tasks.forEach(function (task) {
+    filtered.forEach(function (task) {
       var li = document.createElement('li');
       li.className = 'list-group-item d-flex align-items-center gap-2 flex-wrap' + (task.done ? ' task-item--done' : '');
 
@@ -213,6 +296,77 @@
     cancelButton.hidden = true;
   }
 
+  function downloadFile(name, content) {
+    var blob = new Blob([content], { type: 'application/json;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () {
+      URL.revokeObjectURL(url);
+    }, 1000);
+  }
+
+  function sanitizeImported(value) {
+    if (!Array.isArray(value)) {
+      return null;
+    }
+    var result = [];
+    value.forEach(function (item) {
+      if (!item || typeof item.title !== 'string' || !item.title.trim()) {
+        return;
+      }
+      var priority = validPriorities.indexOf(item.priority) !== -1 ? item.priority : 'средний';
+      result.push({
+        id: typeof item.id === 'string' ? item.id : generateId(),
+        title: item.title.trim(),
+        priority: priority,
+        startDate: typeof item.startDate === 'string' ? item.startDate : '',
+        done: item.done === true,
+        owner: currentUser,
+        createdAt: typeof item.createdAt === 'string' ? item.createdAt : new Date().toISOString()
+      });
+    });
+    return result;
+  }
+
+  exportButton.addEventListener('click', function () {
+    var tasks = getTasks();
+    downloadFile('taskadmin-' + currentUser + '.json', JSON.stringify(tasks, null, 2));
+    showMessage('Экспортировано задач: ' + tasks.length + '.');
+  });
+
+  importInput.addEventListener('change', function () {
+    var file = importInput.files && importInput.files[0];
+    importInput.value = '';
+    if (!file) {
+      return;
+    }
+
+    var reader = new FileReader();
+    reader.onload = function () {
+      var tasks;
+      try {
+        tasks = sanitizeImported(JSON.parse(String(reader.result)));
+      } catch (e) {
+        showMessage('Некорректный файл импорта.', 'error');
+        return;
+      }
+      if (tasks === null) {
+        showMessage('Некорректный файл импорта.', 'error');
+        return;
+      }
+      saveTasks(tasks);
+      resetForm();
+      render();
+      showMessage('Импортировано задач: ' + tasks.length + '.');
+    };
+    reader.readAsText(file, 'utf-8');
+  });
+
   taskList.addEventListener('click', function (event) {
     var target = event.target.closest ? event.target.closest('button[data-action]') : null;
     if (!target) {
@@ -255,6 +409,10 @@
   cancelButton.addEventListener('click', function () {
     resetForm();
   });
+
+  searchInput.addEventListener('input', render);
+  filterSelect.addEventListener('change', render);
+  sortSelect.addEventListener('change', render);
 
   userForm.addEventListener('submit', function (event) {
     event.preventDefault();

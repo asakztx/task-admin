@@ -24,6 +24,19 @@
     </section>
 
     <section class="card shadow-sm mb-4">
+      <div class="card-body d-flex flex-wrap gap-2 align-items-center justify-content-between">
+        <span class="text-muted small">Резервное копирование задач текущего пользователя</span>
+        <span class="d-flex gap-2">
+          <button type="button" id="task-export" class="btn btn-outline-primary btn-sm">Экспорт в JSON</button>
+          <label class="btn btn-outline-secondary btn-sm mb-0">
+            Импорт из JSON
+            <input type="file" id="task-import" accept=".json,application/json" class="visually-hidden">
+          </label>
+        </span>
+      </div>
+    </section>
+
+    <section class="card shadow-sm mb-4">
       <div class="card-body">
         <h2 class="h5">Новая задача</h2>
         <form id="task-form">
@@ -56,8 +69,29 @@
     <section class="card shadow-sm">
       <div class="card-body">
         <h2 class="h5">Список задач</h2>
+
+        <div class="d-flex gap-2 flex-wrap mb-3">
+          <label class="visually-hidden" for="task-search">Поиск по названию</label>
+          <input type="search" id="task-search" class="form-control flex-grow-1" placeholder="Поиск по названию…" autocomplete="off">
+          <label class="visually-hidden" for="task-filter">Фильтр по статусу</label>
+          <select id="task-filter" class="form-select" style="max-width: 180px;">
+            <option value="all">Все</option>
+            <option value="active">В работе</option>
+            <option value="done">Выполненные</option>
+          </select>
+          <label class="visually-hidden" for="task-sort">Сортировка</label>
+          <select id="task-sort" class="form-select" style="max-width: 200px;">
+            <option value="created">По дате создания</option>
+            <option value="priority">По приоритету</option>
+            <option value="start">По дате начала</option>
+          </select>
+        </div>
+
+        <p id="task-stats" class="text-muted small mb-2"></p>
+
         <ul id="task-list" class="list-unstyled mb-0"></ul>
         <p id="empty-message" class="text-muted fst-italic mb-0" hidden>Список задач пуст</p>
+        <p id="no-match-message" class="text-muted fst-italic mb-0" hidden>Ничего не найдено по заданным условиям</p>
       </div>
     </section>
   </main>

@@ -112,3 +112,140 @@ test('изоляция задач по пользователю', async ({ page 
   await expect(page.locator('#task-list .task-name')).toHaveCount(0);
   await expect(page.locator('#empty-message')).toBeVisible();
 });
+
+test('поиск задач по названию', async ({ page }) => {
+  await createTask(page, 'Подготовить отчёт', 'высокий');
+  await createTask(page, 'Оплатить счёт', 'средний');
+
+  await page.fill('#task-search', 'отчёт');
+  await expect(page.locator('#task-list .task-name')).toHaveText(['Подготовить отчёт']);
+
+  await page.fill('#task-search', 'несуществующий текст');
+  await expect(page.locator('#task-list .task-name')).toHaveCount(0);
+  await expect(page.locator('#no-match-message')).toBeVisible();
+
+  await page.fill('#task-search', '');
+  await expect(page.locator('#task-list .task-name')).toHaveText([
+    'Подготовить отчёт',
+    'Оплатить счёт',
+  ]);
+});
+
+test('фильтр задач по статусу', async ({ page }) => {
+  await createTask(page, 'Задача 1', 'высокий');
+  await createTask(page, 'Задача 2', 'средний');
+  await page.click('button[data-action="done"]');
+
+  await page.selectOption('#task-filter', 'done');
+  await expect(page.locator('#task-list .task-name')).toHaveText(['Задача 1']);
+
+  await page.selectOption('#task-filter', 'active');
+  await expect(page.locator('#task-list .task-name')).toHaveText(['Задача 2']);
+
+  await page.selectOption('#task-filter', 'all');
+  await expect(page.locator('#task-list .task-name')).toHaveText([
+    'Задача 1',
+    'Задача 2',
+  ]);
+});
+
+test('статистика по задачам', async ({ page }) => {
+  await expect(page.locator('#task-stats')).toHaveText('Задач пока нет');
+
+  await createTask(page, 'Задача 1', 'высокий');
+  await createTask(page, 'Задача 2', 'средний');
+  await expect(page.locator('#task-stats')).toHaveText('Всего: 2 • Выполнено: 0');
+
+  await page.click('button[data-action="done"]');
+  await expect(page.locator('#task-stats')).toHaveText('Всего: 2 • Выполнено: 1');
+});
+
+test('поиск и фильтр применяются совместно', async ({ page }) => {
+  await createTask(page, 'Отчёт', 'высокий');
+  await createTask(page, 'Отчёт', 'низкий');
+  await createTask(page, 'Письмо', 'низкий');
+
+  await page.selectOption('#task-filter', 'active');
+  await page.fill('#task-search', 'отчёт');
+  await expect(page.locator('#task-list .task-name')).toHaveText(['Отчёт', 'Отчёт']);
+});
+
+test('сортировка задач по приоритету', async ({ page }) => {
+  await createTask(page, 'Задача низкого приоритета', 'низкий');
+  await createTask(page, 'Задача высокого приоритета', 'высокий');
+  await createTask(page, 'Задача среднего приоритета', 'средний');
+
+  await page.selectOption('#task-sort', 'priority');
+  await expect(page.locator('#task-list .task-name')).toHaveText([
+    'Задача высокого приоритета',
+    'Задача среднего приоритета',
+    'Задача низкого приоритета',
+  ]);
+});
+
+test('сортировка задач по дате начала', async ({ page }) => {
+  await createTask(page, 'Позже', 'низкий', '2023-09-30');
+  await createTask(page, 'Раньше', 'низкий', '2023-08-01');
+  await createTask(page, 'Без даты', 'низкий');
+
+  await page.selectOption('#task-sort', 'start');
+  await expect(page.locator('#task-list .task-name')).toHaveText([
+    'Раньше',
+    'Позже',
+    'Без даты',
+  ]);
+});
+
+test('сортировка задач по дате создания (по умолчанию)', async ({ page }) => {
+  await createTask(page, 'Первая', 'низкий');
+  await createTask(page, 'Вторая', 'средний');
+  await createTask(page, 'Третья', 'высокий');
+
+  await page.selectOption('#task-sort', 'created');
+  await expect(page.locator('#task-list .task-name')).toHaveText(['Первая', 'Вторая', 'Третья']);
+});
+
+test('экспорт задач в JSON-файл', async ({ page }) => {
+  await createTask(page, 'Экспортируемая', 'высокий');
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.click('#task-export');
+  const download = await downloadPromise;
+
+  expect(download.suggestedFilename()).toBe('taskadmin-Гость.json');
+  const path = await download.path();
+  const content = JSON.parse(require('fs').readFileSync(path, 'utf-8'));
+  expect(content).toHaveLength(1);
+  expect(content[0].title).toBe('Экспортируемая');
+  expect(content[0].priority).toBe('высокий');
+});
+
+test('импорт задач из JSON-файла', async ({ page }) => {
+  const data = JSON.stringify([
+    { id: 'abc', title: 'Импортированная 1', priority: 'высокий', startDate: '2023-08-10', done: false },
+    { id: 'def', title: 'Импортированная 2', priority: 'низкий', startDate: '', done: true },
+  ]);
+
+  await page.setInputFiles('#task-import', {
+    name: 'tasks.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(data),
+  });
+
+  await expect(page.locator('#task-list .task-name')).toHaveText([
+    'Импортированная 1',
+    'Импортированная 2',
+  ]);
+  await expect(page.locator('#task-stats')).toHaveText('Всего: 2 • Выполнено: 1');
+});
+
+test('импорт некорректного JSON-файла показывает ошибку', async ({ page }) => {
+  await page.setInputFiles('#task-import', {
+    name: 'bad.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from('not-json{{{'),
+  });
+
+  await expect(page.locator('#confirmation')).toContainText('Некорректный файл импорта');
+  await expect(page.locator('#empty-message')).toBeVisible();
+});
